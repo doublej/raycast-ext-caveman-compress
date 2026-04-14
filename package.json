@@ -31,6 +31,12 @@
       ]
     },
     {
+      "name": "compress-files",
+      "title": "Compress Files",
+      "description": "Compress .md/.txt files from Finder selection or clipboard paths",
+      "mode": "view"
+    },
+    {
       "name": "compress-with-preview",
       "title": "Compress (Preview)",
       "description": "Pick backend, preview compressed output before paste",
