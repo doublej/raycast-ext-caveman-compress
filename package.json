@@ -1,0 +1,111 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "caveman-compress",
+  "title": "Caveman Compress",
+  "description": "Compress text via multiple LLM/heuristic backends (caveman style)",
+  "icon": "command-icon.png",
+  "author": "jurre_jan",
+  "categories": ["Productivity", "Developer Tools"],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "compress",
+      "title": "Compress Selection",
+      "description": "Compress selected text via chosen backend, then paste",
+      "mode": "no-view",
+      "arguments": [
+        {
+          "name": "backend",
+          "type": "dropdown",
+          "placeholder": "backend",
+          "required": false,
+          "data": [
+            { "title": "Default (preferences)", "value": "default" },
+            { "title": "Claude (sonnet)", "value": "claude" },
+            { "title": "Codex (gpt-5.4-mini)", "value": "codex" },
+            { "title": "Opencode (minimax)", "value": "opencode" },
+            { "title": "Ollama (gemma4)", "value": "ollama-local" },
+            { "title": "NLP local", "value": "nlp-local" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "compress-with-preview",
+      "title": "Compress (Preview)",
+      "description": "Pick backend, preview compressed output before paste",
+      "mode": "view"
+    },
+    {
+      "name": "stats",
+      "title": "Stats",
+      "description": "Per-backend compression effectiveness",
+      "mode": "view"
+    },
+    {
+      "name": "history",
+      "title": "Job History",
+      "description": "Recent compression jobs (hash-only)",
+      "mode": "view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "cliPath",
+      "type": "textfield",
+      "title": "CLI binary",
+      "description": "Path to caveman-compress executable",
+      "default": "$HOME/.bun/bin/caveman-compress",
+      "required": false
+    },
+    {
+      "name": "defaultBackend",
+      "type": "dropdown",
+      "title": "Default backend",
+      "description": "Backend used when the command argument is empty or 'default'",
+      "default": "claude",
+      "required": false,
+      "data": [
+        { "title": "Claude (sonnet)", "value": "claude" },
+        { "title": "Codex (gpt-5.4-mini)", "value": "codex" },
+        { "title": "Opencode (minimax)", "value": "opencode" },
+        { "title": "Ollama (gemma4)", "value": "ollama-local" },
+        { "title": "NLP local", "value": "nlp-local" }
+      ]
+    },
+    {
+      "name": "autoPaste",
+      "type": "checkbox",
+      "title": "Auto-paste",
+      "label": "Paste compressed output after success",
+      "description": "If off, output is copied to clipboard only",
+      "default": true,
+      "required": false
+    },
+    {
+      "name": "extraPath",
+      "type": "textfield",
+      "title": "Extra PATH dirs",
+      "description": "Colon-separated dirs prepended to PATH for backend lookup",
+      "default": "$HOME/.bun/bin:$HOME/.local/bin:$HOME/.opencode/bin:/opt/homebrew/bin:/usr/local/bin",
+      "required": false
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.83.0",
+    "@raycast/utils": "^1.17.0"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^1.0.11",
+    "@types/node": "^20.8.10",
+    "@types/react": "^18.3.3",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.5"
+  },
+  "scripts": {
+    "build": "ray build --skip-types -e dist -o dist",
+    "dev": "ray develop",
+    "fix-lint": "ray lint --fix",
+    "lint": "ray lint"
+  }
+}
