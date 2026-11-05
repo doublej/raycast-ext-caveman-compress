@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { userInfo, homedir } from "node:os";
 import { prefs, buildPath } from "./prefs";
 
 const execFileP = promisify(execFile);
@@ -55,22 +56,41 @@ async function run(
   opts: { input?: string; timeoutMs?: number } = {},
 ): Promise<string> {
   const p = prefs();
-  const env = { ...process.env, PATH: buildPath(p.extraPath) };
+  const uname = userInfo().username;
+  const env = {
+    ...process.env,
+    PATH: buildPath(p.extraPath),
+    HOME: process.env.HOME || homedir(),
+    USER: process.env.USER || uname,
+    LOGNAME: process.env.LOGNAME || uname,
+    SHELL: process.env.SHELL || "/bin/zsh",
+  };
+  const started = Date.now();
   try {
     const { stdout } = await execFileP(p.cliPath, args, {
       env,
-      timeout: opts.timeoutMs ?? 90_000,
+      timeout: opts.timeoutMs ?? 600_000,
       maxBuffer: 8 * 1024 * 1024,
       input: opts.input,
     });
     return stdout;
   } catch (e: unknown) {
-    const err = e as { stderr?: string; code?: number; message?: string };
-    throw new CliError(
-      err.message || "CLI failed",
-      err.stderr || "",
-      err.code ?? null,
-    );
+    const err = e as {
+      stderr?: string;
+      stdout?: string;
+      code?: number;
+      signal?: string;
+      killed?: boolean;
+      message?: string;
+    };
+    const elapsed = Date.now() - started;
+    const extras: string[] = [`elapsed_ms=${elapsed}`, `argv=${args.join(" ")}`];
+    if (err.killed) extras.push("killed=true");
+    if (err.signal) extras.push(`signal=${err.signal}`);
+    if (err.stdout) extras.push(`stdout=${err.stdout.slice(0, 500)}`);
+    const stderr =
+      (err.stderr || "") + (extras.length ? "\n" + extras.join(" ") : "");
+    throw new CliError(err.message || "CLI failed", stderr, err.code ?? null);
   }
 }
 

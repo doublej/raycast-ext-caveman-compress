@@ -2,6 +2,7 @@ import {
   Action,
   ActionPanel,
   Color,
+  Detail,
   Icon,
   List,
   showToast,
@@ -13,6 +14,7 @@ import { useEffect, useState } from "react";
 import { compress, CliError, type BackendInfo, listBackends } from "./lib/cli";
 import { prefs } from "./lib/prefs";
 import { resolveFileTargets } from "./lib/sources";
+import { logEvent, errToFields, LOG_FILE } from "./lib/log";
 
 const BACKEND_ORDER = [
   "claude",
@@ -30,6 +32,7 @@ interface Row {
   status: Status;
   message?: string;
   outPath?: string;
+  errorDetail?: string;
 }
 
 function statusIcon(s: Status) {
@@ -52,6 +55,17 @@ function cliErrMsg(e: unknown): string {
     .trim()
     .split("\n")[0]
     .slice(0, 180);
+}
+
+function cliErrFull(e: unknown): string {
+  const err = e as CliError;
+  const parts: string[] = [];
+  if (err.message) parts.push(`message: ${err.message}`);
+  if (err.code !== undefined && err.code !== null)
+    parts.push(`exit code: ${err.code}`);
+  if (err.stderr) parts.push(`stderr:\n${err.stderr}`);
+  if (parts.length === 0) parts.push(String(e));
+  return parts.join("\n\n");
 }
 
 function fileSize(p: string): number {
@@ -145,9 +159,22 @@ export default function Command() {
           ),
         );
       } catch (e) {
+        logEvent({
+          event: "compress_failed",
+          backend,
+          path: row.path,
+          ...errToFields(e),
+        });
         setRows((prev) =>
           prev.map((r, idx) =>
-            idx === i ? { ...r, status: "failed", message: cliErrMsg(e) } : r,
+            idx === i
+              ? {
+                  ...r,
+                  status: "failed",
+                  message: cliErrMsg(e),
+                  errorDetail: cliErrFull(e),
+                }
+              : r,
           ),
         );
       }
@@ -231,6 +258,20 @@ export default function Command() {
                     icon={Icon.Wand}
                     onAction={runAll}
                   />
+                  {r.errorDetail ? (
+                    <Action.Push
+                      title="Show Error Detail"
+                      icon={Icon.ExclamationMark}
+                      shortcut={{ modifiers: ["cmd"], key: "e" }}
+                      target={
+                        <ErrorDetail
+                          row={r}
+                          backend={backend}
+                          detail={r.errorDetail}
+                        />
+                      }
+                    />
+                  ) : null}
                   <Action
                     title="Reload Detection"
                     icon={Icon.ArrowClockwise}
@@ -248,6 +289,12 @@ export default function Command() {
                     title="Show Source in Finder"
                     path={r.path}
                   />
+                  <Action.ShowInFinder
+                    title="Show Log File"
+                    icon={Icon.Document}
+                    path={LOG_FILE}
+                    shortcut={{ modifiers: ["cmd", "shift"], key: "l" }}
+                  />
                 </ActionPanel>
               }
             />
@@ -263,4 +310,42 @@ function iconColor(s: Status): Color {
   if (s === "failed") return Color.Red;
   if (s === "running") return Color.Yellow;
   return Color.SecondaryText;
+}
+
+function ErrorDetail({
+  row,
+  backend,
+  detail,
+}: {
+  row: Row;
+  backend: string;
+  detail: string;
+}) {
+  const md = [
+    `# Compression failed`,
+    ``,
+    `**File:** \`${row.path}\``,
+    `**Backend:** ${backend}`,
+    `**Size:** ${fmtBytes(row.size)}`,
+    ``,
+    `## Details`,
+    ``,
+    "```",
+    detail,
+    "```",
+    ``,
+    `Log: \`${LOG_FILE}\``,
+  ].join("\n");
+  return (
+    <Detail
+      markdown={md}
+      actions={
+        <ActionPanel>
+          <Action.CopyToClipboard title="Copy Error" content={detail} />
+          <Action.ShowInFinder title="Show Log File" path={LOG_FILE} />
+          <Action.ShowInFinder title="Show Source File" path={row.path} />
+        </ActionPanel>
+      }
+    />
+  );
 }

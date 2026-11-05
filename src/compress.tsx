@@ -11,6 +11,7 @@ import { compress, CliError } from "./lib/cli";
 import { prefs } from "./lib/prefs";
 import { captureSelection } from "./lib/selection";
 import { resolveFileTargets } from "./lib/sources";
+import { logEvent, errToFields } from "./lib/log";
 
 interface Args {
   backend?: string;
@@ -51,6 +52,12 @@ export default async function Command(props: LaunchProps<{ arguments: Args }>) {
       `${backend}: ${pct}% (${res.meta.input_tokens}→${res.meta.output_tokens} tok, ${res.meta.duration_ms}ms)`,
     );
   } catch (e) {
+    logEvent({
+      event: "compress_failed",
+      backend,
+      source: "selection",
+      ...errToFields(e),
+    });
     await toast.hide();
     await showHUD(`✗ ${backend}: ${cliErrMsg(e)}`);
   }
@@ -92,6 +99,12 @@ async function compressFiles(files: string[], backend: string) {
       await toast.hide();
     } catch (e) {
       fail++;
+      logEvent({
+        event: "compress_failed",
+        backend,
+        path: file,
+        ...errToFields(e),
+      });
       await toast.hide();
       await showToast({
         style: Toast.Style.Failure,
